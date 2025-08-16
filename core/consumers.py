@@ -1,53 +1,51 @@
-from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.generic.websocket import WebsocketConsumer
+from asgiref.sync import async_to_sync
 import json
 from .models import Message
 
-class MyWebsocket(AsyncWebsocketConsumer):
-    async def connect(self):
-        # Add this user to the "chat" group
-        await self.channel_layer.group_add("chat", self.channel_name)
-        await self.accept()
+class MyWebsocket(WebsocketConsumer):
+    def connect(self):
+        # Create / join a group (all users join same chat group)
+        self.room_group_name = "chat_room"
+        async_to_sync(self.channel_layer.group_add)(
+            self.room_group_name,
+            self.channel_name
+        )
+        self.accept()
 
-        # Send all previous messages to the user who just connected
-        all_message = await self.get_all_messages()
-        await self.send(text_data=json.dumps({
-            'response': all_message
+        # Send all old messages when user connects
+        all_message = Message.objects.all()
+        text_messages = [mes.text for mes in all_message]
+        self.send(text_data=json.dumps({
+            'response': text_messages
         }))
 
-    async def disconnect(self, close_code):
-        # Remove from group on disconnect
-        await self.channel_layer.group_discard("chat", self.channel_name)
-
-    async def receive(self, text_data):
+    def receive(self, text_data):
         data = json.loads(text_data)
-        msg = data.get("message", '')
+        msg = data.get("message", "")
 
-        # Save to database
-        await self.save_message(msg)
+        # Save in DB
+        Message.objects.create(text=msg)
 
-        # Send the message to everyone in the group
-        await self.channel_layer.group_send(
-            "chat",
+        # Broadcast to everyone in the group
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_group_name,
             {
                 "type": "chat_message",
-                "message": msg,
+                "message": msg
             }
         )
 
-    async def chat_message(self, event):
-        # When group sends a message, broadcast it to WebSocket
-        all_message = await self.get_all_messages()
-        await self.send(text_data=json.dumps({
-            'response': all_message
+    def chat_message(self, event):
+        msg = event["message"]
+
+        # Send message to WebSocket
+        self.send(text_data=json.dumps({
+            "response": msg
         }))
 
-    # Helper: get all messages
-    @staticmethod
-    async def get_all_messages():
-        messages = Message.objects.all()
-        return [mes.text for mes in messages]
-
-    # Helper: save a message
-    @staticmethod
-    async def save_message(msg):
-        Message.objects.create(text=msg)
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
