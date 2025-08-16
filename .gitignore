@@ -1,2 +1,41 @@
 .env
 
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.env
+venv/
+.venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Django stuff
+db.sqlite3
+media/
+staticfiles/
+
+# Logs
+*.log
+
+# Environment & configs
+.env
+*.local
+*.bak
+
+# IDE / Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS / Windows junk
+.DS_Store
+Thumbs.db
+
