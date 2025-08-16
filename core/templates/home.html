@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WebSocket Test</title>
+    <title>WebSocket Chat</title>
   </head>
   <body>
     <input type="text" id="messageInput" placeholder="Type a message..." />
@@ -9,28 +9,39 @@
     <ul id="messages"></ul>
 
     <script>
+      // Use ws:// for local, wss:// for deployed
+      const protocol =
+        window.location.protocol === "https:" ? "wss://" : "ws://";
       const socket = new WebSocket(
-        "wss://" + window.location.host + "/chat_ws/"
+        protocol + window.location.host + "/chat_ws/"
       );
 
       socket.onmessage = function (e) {
         const data = JSON.parse(e.data);
-        const messages = data.response;
         const msgList = document.getElementById("messages");
-        console.log(msgList);
-        msgList.innerHTML = "";
 
-        messages.forEach((msg) => {
+        // If response is a list → first load
+        if (Array.isArray(data.response)) {
+          msgList.innerHTML = "";
+          data.response.forEach((msg) => {
+            const li = document.createElement("li");
+            li.textContent = msg;
+            msgList.appendChild(li);
+          });
+        } else {
+          // If response is a single string → new message
           const li = document.createElement("li");
-          li.textContent = msg;
+          li.textContent = data.response;
           msgList.appendChild(li);
-        });
+        }
       };
 
       function sendMessage() {
         const input = document.getElementById("messageInput");
-        socket.send(JSON.stringify({ message: input.value }));
-        input.value = "";
+        if (input.value.trim() !== "") {
+          socket.send(JSON.stringify({ message: input.value }));
+          input.value = "";
+        }
       }
     </script>
   </body>
