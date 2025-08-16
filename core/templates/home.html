@@ -10,7 +10,7 @@
 
     <script>
       const socket = new WebSocket(
-        "ws://" + window.location.host + "/chat_ws/"
+        "wss://" + window.location.host + "/chat_ws/"
       );
 
       socket.onmessage = function (e) {
